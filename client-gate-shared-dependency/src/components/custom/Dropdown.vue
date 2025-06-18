@@ -6,7 +6,7 @@
     <DropdownMenuContent class="w-56" side="bottom-start">
       <DropdownMenuLabel>Panel Position</DropdownMenuLabel>
       <DropdownMenuSeparator />
-      <DropdownMenuRadioGroup>
+      <DropdownMenuRadioGroup v-model="position">
         <DropdownMenuRadioItem value="top"> Top </DropdownMenuRadioItem>
         <DropdownMenuRadioItem value="bottom"> Bottom </DropdownMenuRadioItem>
         <DropdownMenuRadioItem value="right"> Right </DropdownMenuRadioItem>
@@ -33,7 +33,7 @@ export default {
   },
   data() {
     return {
-      position: false,
+      position: "bottom",
     };
   },
 };

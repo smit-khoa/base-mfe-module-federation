@@ -12,6 +12,40 @@ module.exports = (env, argv) => {
   const isProduction = argv.mode === "production";
   const isDevelopment = argv.mode === "development";
 
+  const plugins = [
+    new HtmlWebpackPlugin({
+      title: "Shared View",
+      template: path.resolve(__src, "templates", "index.html"),
+    }),
+    new VueLoaderPlugin(),
+    new ModuleFederationPlugin({
+      name: "client_gate_shared_dependency",
+      filename: "client_gate_shared_dependency-remote.js",
+      exposes: {
+        "./styles": "./src/static/global.css",
+        "./common": "./src/index.js",
+      },
+      shared: {
+        vue: {
+          singleton: true,
+          eager: true,
+          requiredVersion: "^3.0.0",
+          strictVersion: false,
+        },
+      },
+    }),
+  ];
+
+  if (isDevelopment) {
+    plugins.push(
+      new DefinePlugin({
+        __VUE_OPTIONS_API__: JSON.stringify(true),
+        __VUE_PROD_DEVTOOLS__: JSON.stringify(false),
+        __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: JSON.stringify(false),
+      })
+    );
+  }
+
   const config = {
     entry: path.resolve(__src, "main.js"),
     output: {
@@ -22,34 +56,7 @@ module.exports = (env, argv) => {
       clean: true,
     },
 
-    plugins: [
-      // new DefinePlugin({
-      //   __VUE_OPTIONS_API__: JSON.stringify(true),
-      //   __VUE_PROD_DEVTOOLS__: JSON.stringify(false),
-      //   __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: JSON.stringify(false),
-      // }),
-      new HtmlWebpackPlugin({
-        title: "Shared View",
-        template: path.resolve(__src, "templates", "index.html"),
-      }),
-      new VueLoaderPlugin(),
-      new ModuleFederationPlugin({
-        name: "client_gate_shared_dependency",
-        filename: "client_gate_shared_dependency-remote.js",
-        exposes: {
-          "./styles": "./src/static/global.css",
-          "./common": "./src/index.js",
-        },
-        shared: {
-          vue: {
-            singleton: true,
-            eager: true,
-            requiredVersion: "^3.0.0",
-            strictVersion: false,
-          },
-        },
-      }),
-    ],
+    plugins,
 
     resolve: {
       alias: {
