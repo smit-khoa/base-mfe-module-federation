@@ -8,7 +8,7 @@ function updateIndexHtml() {
     "..",
     "deployment-app",
     "public",
-    "smit-gate-root-config"
+    "smit_gate_root_config"
   );
 
   // Đường dẫn file index.html template từ root-config build
@@ -70,7 +70,7 @@ function updateIndexHtml() {
     const scriptTags = jsFiles
       .map(
         (file) =>
-          `<script defer="defer" src="./smit-gate-root-config/${file}"></script>`
+          `<script defer="defer" src="./smit_gate_root_config/${file}"></script>`
       )
       .join("");
 

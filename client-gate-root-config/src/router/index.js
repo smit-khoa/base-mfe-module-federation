@@ -5,22 +5,37 @@ import { createWebHistory, createRouter } from "vue-router";
 // console.log(App1, App2);
 
 // Import static để tránh dynamic chunks
-const HomeApp = () => import("client_gate_home/app");
-const App1 = () => import("client_gate_app_1/app");
-const App2 = () => import("client_gate_app_2/app");
+const HomeApp = () => import("smit_gate_home/app");
+const App2 = () => import("smit_gate_app_2/app");
 
 const routes = [
   {
     path: "/",
     component: HomeApp,
+    meta: {
+      title: "Home",
+    },
   },
   {
-    path: "/1",
-    component: App1,
+    path: "/business",
+    component: () => import("smit_gate_business/app"),
+    meta: {
+      title: "Business",
+    },
   },
   {
     path: "/2",
     component: App2,
+    meta: {
+      title: "App 2",
+    },
+  },
+  {
+    path: "/shared",
+    component: () => import("smit_gate_shared_dependency/app"),
+    meta: {
+      title: "Shared",
+    },
   },
 ];
 

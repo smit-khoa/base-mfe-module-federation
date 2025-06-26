@@ -1,49 +1,51 @@
 <template>
-  <div class="app">
-    <div>
-      <h3>Navigation dksfhskdfhksjhs</h3>
-      <router-link to="/">Home</router-link> |
-      <router-link to="/1">App 1</router-link> |
-      <router-link to="/2">App 2</router-link>
+  <div class="gate">
+    <div class="sidebar">
+      <Sidebar />
     </div>
     <div class="content">
+      <Header :title="routeTitle" />
       <router-view></router-view>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: "App",
-};
+<script setup lang="ts">
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import Sidebar from "./components/Sidebar.vue";
+import Header from "./components/Header.vue";
+
+// import { DropdownMenu } from "smit_gate_shared_dependency/components/ui";
+// console.log("DropdownMenu", DropdownMenu);
+
+import { onMounted } from "vue";
+
+// Lấy route hiện tại
+const route = useRoute();
+
+// Computed property để lấy title từ route meta
+const routeTitle = computed(() => {
+  return (route.meta?.title as string) || "Default Title";
+});
+
+onMounted(() => {
+  console.log("onMounted sdfsdfsfd");
+});
 </script>
 
-<style>
-.app {
+<style lang="scss">
+.gate {
   width: 100vw;
   height: 100vh;
   display: flex;
-  flex-direction: column;
-}
+  overflow: hidden;
 
-.app > div:first-child {
-  padding: 20px;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #ddd;
-}
-
-.app > div:first-child a {
-  margin: 0 10px;
-  text-decoration: none;
-  color: #007bff;
-}
-
-.app > div:first-child a:hover {
-  text-decoration: underline;
-}
-
-.content {
-  flex: 1;
-  padding: 20px;
+  .content {
+    flex: 1;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
 }
 </style>

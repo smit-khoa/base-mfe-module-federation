@@ -2,14 +2,15 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { VueLoaderPlugin } = require("vue-loader");
 const { ModuleFederationPlugin } = require("webpack").container;
+const PACKAGE = require("./package.json");
+const PACKAGE_NAME = PACKAGE.name;
 
 //Just to help us with directories and folders path
 const __base = path.resolve(__dirname, ".");
 const __src = path.resolve(__base, "src");
 
 module.exports = (env, argv) => {
-  const isProduction = argv.mode === "production";
-  const isDevelopment = argv.mode === "development";
+  const is_production = argv.mode === "production";
 
   const config = {
     //Entry: main file that init our application
@@ -17,7 +18,7 @@ module.exports = (env, argv) => {
 
     //Output: result of the bundle after webpack run
     output: {
-      filename: isProduction
+      filename: is_production
         ? "[name].[contenthash].bundle.js"
         : "[name].bundle.js",
       path: path.resolve(__base, "dist"),
@@ -32,20 +33,12 @@ module.exports = (env, argv) => {
       }),
       new VueLoaderPlugin(),
       new ModuleFederationPlugin({
-        name: "client_gate_app_2",
-        filename: "client_gate_app_2-remote.js",
+        name: `smit_gate_${PACKAGE_NAME}`,
+        filename: `smit_gate_${PACKAGE_NAME}_remote.js`,
         exposes: {
           "./app": "./src/App.vue",
         },
-        remotes: isProduction
-          ? {
-              shared:
-                "client_gate_shared_dependency@/smit-gate-shared-dependency/client_gate_shared_dependency-remote.js",
-            }
-          : {
-              shared:
-                "client_gate_shared_dependency@http://localhost:17101/client_gate_shared_dependency-remote.js",
-            },
+        remotes: {},
         shared: {
           vue: {
             singleton: true,
@@ -84,25 +77,8 @@ module.exports = (env, argv) => {
     },
   };
 
-  // Development specific configuration
-  if (isDevelopment) {
-    config.mode = "development";
-    config.devtool = "inline-source-map";
-    config.devServer = {
-      static: "./dist",
-      hot: true,
-      port: 17103,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
-      client: {
-        logging: "none", // tắt logs khi save code
-      },
-    };
-  }
-
   // Production specific configuration
-  if (isProduction) {
+  if (is_production) {
     config.mode = "production";
     config.devtool = false;
     // Build vào deployment-app/public
@@ -111,10 +87,22 @@ module.exports = (env, argv) => {
       "..",
       "deployment-app",
       "public",
-      "smit-gate-app-2"
+      `smit_gate_${PACKAGE_NAME}`
     );
-    config.output.publicPath = "/smit-gate-app-2/";
+    config.output.publicPath = `/smit_gate_${PACKAGE_NAME}/`;
     // Có thể thêm các optimization khác ở đây nếu cần
+  } else {
+    config.mode = "development";
+    config.devtool = "inline-source-map";
+    config.devServer = {
+      static: "./dist",
+      hot: true,
+      port: 17103,
+      webSocketServer: false,
+      client: {
+        // logging: "none", // tắt logs khi save code
+      },
+    };
   }
 
   return config;

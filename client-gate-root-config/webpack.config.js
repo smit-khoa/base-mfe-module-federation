@@ -2,12 +2,14 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { VueLoaderPlugin } = require("vue-loader");
 const { ModuleFederationPlugin } = require("webpack").container;
+const generateProxyConfig = require("./dev-proxy-config");
+const PACKAGE = require("./package.json");
+const PACKAGE_NAME = PACKAGE.name;
 
-//Just to help us with directories and folders path
 const __base = path.resolve(__dirname, ".");
 const __src = path.resolve(__base, "src");
 
-// Custom plugin để cập nhật index.html
+// mỗi khi build sẽ tạo mới file index.html tổng
 class UpdateIndexPlugin {
   apply(compiler) {
     compiler.hooks.done.tap("UpdateIndexPlugin", (compilation) => {
@@ -24,8 +26,17 @@ class UpdateIndexPlugin {
 }
 
 module.exports = (env, argv) => {
-  const isProduction = argv.mode === "production";
-  const isDevelopment = argv.mode === "development";
+  const is_production = argv.mode === "production";
+  const config_module = generateProxyConfig({
+    DEV_PORT: {
+      root_config: "8333",
+      shared_dependency: "17101",
+      business: "17102",
+      app_2: "17103",
+      home: "17104",
+    },
+    is_production,
+  });
 
   const config = {
     //Entry: main file that init our application
@@ -33,46 +44,24 @@ module.exports = (env, argv) => {
 
     //Output: result of the bundle after webpack run
     output: {
-      filename: isProduction
+      filename: is_production
         ? "[name].[contenthash].bundle.js"
         : "[name].bundle.js",
       path: path.resolve(__base, "dist"),
-      publicPath: isProduction ? "./smit-gate-root-config/" : "/",
+      publicPath: is_production ? `./smit_gate_${PACKAGE_NAME}/` : "/",
       clean: true,
       chunkLoadingGlobal: "webpackChunkcontainer_host",
     },
 
-    //Plugins to help and include additionals functionalities to webpack
     plugins: [
+      new VueLoaderPlugin(),
       new HtmlWebpackPlugin({
-        title: "Root Config",
+        title: "SMIT Gate v2",
         template: path.resolve(__src, "templates", "index.html"),
       }),
-      new VueLoaderPlugin(),
       new ModuleFederationPlugin({
-        name: "container_host",
-        remotes: isProduction
-          ? {
-              shared:
-                "client_gate_shared_dependency@./smit-gate-shared-dependency/client_gate_shared_dependency-remote.js",
-              client_gate_app_1:
-                "client_gate_app_1@./smit-gate-app-1/client_gate_app_1-remote.js",
-              client_gate_app_2:
-                "client_gate_app_2@./smit-gate-app-2/client_gate_app_2-remote.js",
-              client_gate_home:
-                "client_gate_home@./smit-gate-home/client-gate-home-remote.js",
-            }
-          : {
-              // Development URLs
-              shared:
-                "client_gate_shared_dependency@http://localhost:17101/client_gate_shared_dependency-remote.js",
-              client_gate_app_1:
-                "client_gate_app_1@http://localhost:17102/client_gate_app_1-remote.js",
-              client_gate_app_2:
-                "client_gate_app_2@http://localhost:17103/client_gate_app_2-remote.js",
-              client_gate_home:
-                "client_gate_home@http://localhost:17104/client-gate-home-remote.js",
-            },
+        name: `smit_gate_${PACKAGE_NAME}`,
+        remotes: config_module.remote,
         shared: {
           vue: {
             singleton: true,
@@ -82,20 +71,41 @@ module.exports = (env, argv) => {
           },
         },
       }),
-      // Thêm plugin tự động cập nhật index.html cho production
-      ...(isProduction ? [new UpdateIndexPlugin()] : []),
+
+      ...(is_production ? [new UpdateIndexPlugin()] : []),
     ],
 
-    //Webpack doesnt know how to handler all type of files and what to do with them, so this section
-    //we can capture and configure a specific type of file and determine a loader plugin to process it
     module: {
       rules: [
-        //Vue loader. Says to webpack tha files with .vue extension need to be processed by the vue-loader plugin
         {
           test: /\.vue$/,
           loader: "vue-loader",
         },
-        //TypeScript loader
+        {
+          test: /\.s[ac]ss$/i,
+          oneOf: [
+            {
+              resourceQuery: /module/,
+              use: [
+                "vue-style-loader",
+                {
+                  loader: "css-loader",
+                  options: {
+                    modules: {
+                      localIdentName: is_production
+                        ? "[hash:base64:10]"
+                        : "[name]_[local]_[hash:base64:10]",
+                    },
+                  },
+                },
+                "sass-loader",
+              ],
+            },
+            {
+              use: ["vue-style-loader", "css-loader", "sass-loader"],
+            },
+          ],
+        },
         {
           test: /\.ts$/,
           use: [
@@ -109,14 +119,31 @@ module.exports = (env, argv) => {
           ],
           exclude: /node_modules/,
         },
-        //CSS loaders. Make possible import css files as js modules
         {
           test: /\.css$/,
-          use: ["vue-style-loader", "css-loader"],
+          oneOf: [
+            {
+              resourceQuery: /module/,
+              use: [
+                "vue-style-loader",
+                {
+                  loader: "css-loader",
+                  options: {
+                    modules: {
+                      localIdentName: "[name]_[local]_[hash:base64:5]",
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              use: ["vue-style-loader", "css-loader"],
+            },
+          ],
         },
-        //Indicates that png files are assets to be processed by webpack
+
         {
-          test: /\.png$/,
+          test: /\.(png|jpe?g|gif|svg)$/i,
           type: "asset/resource",
         },
       ],
@@ -138,25 +165,7 @@ module.exports = (env, argv) => {
     },
   };
 
-  // Development specific configuration
-  if (isDevelopment) {
-    config.mode = "development";
-    config.devtool = "inline-source-map";
-    config.devServer = {
-      static: "./dist",
-      hot: true,
-      // liveReload: false,
-      port: 17100,
-      historyApiFallback: true,
-
-      client: {
-        logging: "none", // tắt logs khi save code
-      },
-    };
-  }
-
-  // Production specific configuration
-  if (isProduction) {
+  if (is_production) {
     config.mode = "production";
     config.devtool = false;
     // Build vào deployment-app/public
@@ -165,8 +174,31 @@ module.exports = (env, argv) => {
       "..",
       "deployment-app",
       "public",
-      "smit-gate-root-config"
+      `smit_gate_${PACKAGE_NAME}`
     );
+  } else {
+    config.mode = "development";
+    config.devtool = "inline-source-map";
+    config.devServer = {
+      static: "./dist",
+      hot: true,
+      port: 8333,
+      historyApiFallback: true,
+      https: true,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        // "Access-Control-Allow-Methods":
+        //   "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+        // "Access-Control-Allow-Headers":
+        //   "X-Requested-With, content-type, Authorization",
+      },
+
+      client: {
+        logging: "none",
+      },
+      allowedHosts: "all",
+      proxy: config_module.proxy,
+    };
   }
 
   return config;
